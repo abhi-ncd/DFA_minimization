@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { MinimizationResult } from '../types/dfa';
-import {
-  ChevronLeft,
-  ChevronRight,
-  RotateCcw,
-  Play,
-  Pause,
-  CheckCircle,
-  Split,
-  Layers,
-  ArrowRight,
-  Info
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Play, Pause, ArrowRight } from 'lucide-react';
+import { Plate, Key, Led, StateChip, groupColor } from './ui';
+import { tick } from '../utils/sound';
 
 interface StepByStepViewProps {
   minimizationResult: MinimizationResult;
   currentStepIndex: number;
   onStepChange: (index: number) => void;
 }
+
+const TYPE_LABEL: Record<string, string> = {
+  reachability: 'Reachability',
+  initial_partition: 'Initial split',
+  refinement: 'Refinement',
+  completed: 'Stable',
+};
 
 export const StepByStepView: React.FC<StepByStepViewProps> = ({
   minimizationResult,
@@ -26,289 +24,229 @@ export const StepByStepView: React.FC<StepByStepViewProps> = ({
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const steps = minimizationResult.steps;
-  const currentStep = steps[currentStepIndex] || steps[0];
+  const step = steps[currentStepIndex] || steps[0];
+  const last = steps.length - 1;
+  const alphabet = minimizationResult.originalDFA.alphabet;
 
-  // Auto-play timer effect
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isPlaying) {
-      timer = setInterval(() => {
-        if (currentStepIndex >= steps.length - 1) {
-          setIsPlaying(false);
-        } else {
-          onStepChange(currentStepIndex + 1);
-        }
-      }, 1500);
-    }
+    if (!isPlaying) return;
+    const timer = setInterval(() => {
+      if (currentStepIndex >= last) {
+        setIsPlaying(false);
+      } else {
+        tick('low');
+        onStepChange(currentStepIndex + 1);
+      }
+    }, 1400);
     return () => clearInterval(timer);
-  }, [isPlaying, steps.length, currentStepIndex, onStepChange]);
+  }, [isPlaying, last, currentStepIndex, onStepChange]);
 
-  if (!steps || steps.length === 0) {
-    return null;
-  }
+  if (!step) return null;
+
+  const title = step.title.replace(/^\d+\.\s*/, '');
+  // Signatures are computed against the classes before this round's split
+  const signatureBase =
+    step.type === 'refinement' ? steps[currentStepIndex - 1]?.partitions ?? step.partitions : step.partitions;
+  const groupOf = (state: string) => signatureBase.findIndex(g => g.includes(state));
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-6">
-      {/* Header & Controls Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <h2 className="text-lg font-semibold text-white">Step-by-Step Minimization</h2>
-            <span className="px-2.5 py-0.5 text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">
-              Hopcroft's Partition Algorithm
-            </span>
+    <Plate
+      index="03"
+      title="Refine"
+      subtitle="Split states into accepting and non-accepting, then keep splitting any class whose members disagree about where their transitions land."
+    >
+      {/* Transport */}
+      <div className="display p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="flex items-center gap-5 min-w-0">
+          <div className="font-mono tabular-nums leading-none shrink-0">
+            <span className="text-5xl sm:text-6xl font-bold text-accent glow">{currentStepIndex + 1}</span>
+            <span className="text-xl sm:text-2xl font-bold text-muted">/{steps.length}</span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Step {currentStepIndex + 1} of {steps.length}: <span className="text-slate-200 font-medium">{currentStep.title}</span>
-          </p>
+          <div className="min-w-0">
+            <div className="caps">{TYPE_LABEL[step.type] ?? step.type}</div>
+            <div className="mt-1 text-lg sm:text-xl font-bold leading-tight">{title}</div>
+          </div>
         </div>
 
-        {/* Stepper Control Buttons */}
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => onStepChange(0)}
-            disabled={currentStepIndex === 0}
-            className="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg border border-slate-700 transition"
-            title="Reset to Step 1"
-          >
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          <Key size="icon" onClick={() => { setIsPlaying(false); onStepChange(0); }} disabled={currentStepIndex === 0} aria-label="First step">
             <RotateCcw className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={() => onStepChange(Math.max(0, currentStepIndex - 1))}
-            disabled={currentStepIndex === 0}
-            className="px-3 py-1.5 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg border border-slate-700 flex items-center space-x-1 transition"
+          </Key>
+          <Key size="icon" onClick={() => onStepChange(Math.max(0, currentStepIndex - 1))} disabled={currentStepIndex === 0} aria-label="Previous step">
+            <ChevronLeft className="w-5 h-5" />
+          </Key>
+          <Key
+            tone="accent"
+            size="lg"
+            className="w-28"
+            on={isPlaying}
+            onClick={() => {
+              if (!isPlaying && currentStepIndex >= last) onStepChange(0);
+              setIsPlaying(!isPlaying);
+            }}
           >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Prev</span>
-          </button>
-
-          <button
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="px-3.5 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg flex items-center space-x-1.5 transition shadow-sm"
-          >
-            {isPlaying ? (
-              <>
-                <Pause className="w-3.5 h-3.5" />
-                <span>Pause</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5" />
-                <span>Auto Play</span>
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={() => onStepChange(Math.min(steps.length - 1, currentStepIndex + 1))}
-            disabled={currentStepIndex === steps.length - 1}
-            className="px-3 py-1.5 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg border border-slate-700 flex items-center space-x-1 transition"
-          >
-            <span>Next</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
+            {isPlaying ? <Pause className="w-4 h-4" fill="currentColor" /> : <Play className="w-4 h-4" fill="currentColor" />}
+            {isPlaying ? 'Pause' : 'Play'}
+          </Key>
+          <Key size="icon" onClick={() => onStepChange(Math.min(last, currentStepIndex + 1))} disabled={currentStepIndex === last} aria-label="Next step">
+            <ChevronRight className="w-5 h-5" />
+          </Key>
         </div>
       </div>
 
-      {/* Progress Slider */}
-      <div className="space-y-1">
-        <input
-          type="range"
-          min={0}
-          max={steps.length - 1}
-          value={currentStepIndex}
-          onChange={(e) => onStepChange(parseInt(e.target.value))}
-          className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-        />
-        <div className="flex justify-between text-[11px] text-slate-500 font-mono">
-          <span>Start (Reachability)</span>
-          <span>Final Stable Partition</span>
-        </div>
+      {/* Progress segments */}
+      <div className="mt-4 flex gap-1.5" role="tablist" aria-label="Steps">
+        {steps.map((s, i) => (
+          <button
+            key={i}
+            type="button"
+            role="tab"
+            aria-selected={i === currentStepIndex}
+            aria-label={`Step ${i + 1}: ${s.title.replace(/^\d+\.\s*/, '')}`}
+            onClick={() => {
+              tick('low');
+              onStepChange(i);
+            }}
+            className="flex-1 py-2 group"
+          >
+            <span
+              className={`block h-2 rounded-full transition-all ${
+                i <= currentStepIndex ? 'bg-accent' : 'bg-line group-hover:bg-muted/50'
+              } ${i === currentStepIndex ? 'shadow-[0_0_14px_rgb(var(--accent)/0.75)]' : ''}`}
+            />
+          </button>
+        ))}
       </div>
 
-      {/* Step Description Card */}
-      <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-indigo-300 flex items-center gap-2">
-              <Info className="w-4 h-4 text-indigo-400" />
-              {currentStep.title}
-            </h3>
-            <p className="text-xs text-slate-300 leading-relaxed">{currentStep.description}</p>
-          </div>
-          {currentStep.isStable && (
-            <span className="px-2.5 py-1 text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-700 rounded-lg flex items-center gap-1.5">
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-              Stable Equilibrium
+      <div key={currentStepIndex} className="animate-rise">
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+          <p className="text-[15px] text-ink/80 leading-relaxed max-w-3xl">{step.description}</p>
+          {step.isStable && (
+            <span className="inline-flex items-center gap-2.5 h-9 px-3.5 rounded-xl bg-ok/10 text-ok ring-1 ring-inset ring-ok/35 text-sm font-semibold">
+              <Led tone="ok" />
+              Stable, nothing split
             </span>
           )}
         </div>
-      </div>
 
-      {/* STEP TYPE 0: Reachability Details */}
-      {currentStep.type === 'reachability' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-4 space-y-2">
-            <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4" />
-              Reachable States ({currentStep.reachableStates.length})
-            </span>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {currentStep.reachableStates.map(st => (
-                <span key={st} className="px-2.5 py-1 bg-emerald-950/50 border border-emerald-800/60 text-emerald-300 font-mono text-xs rounded-md">
-                  {st}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-4 space-y-2">
-            <span className="text-xs font-semibold text-rose-400 flex items-center gap-1.5">
-              <Split className="w-4 h-4" />
-              Unreachable States ({currentStep.unreachableStates.length})
-            </span>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {currentStep.unreachableStates.length === 0 ? (
-                <span className="text-xs text-slate-500 italic">None (All states are reachable)</span>
-              ) : (
-                currentStep.unreachableStates.map(st => (
-                  <span key={st} className="px-2.5 py-1 bg-rose-950/50 border border-rose-800/60 text-rose-300 font-mono text-xs rounded-md line-through">
-                    {st}
-                  </span>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* PARTITION DISPLAY (FOR ALL PARTITION STEPS) */}
-      {currentStep.partitions.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-400" />
-              Current Equivalence Classes (Partitions)
-            </h4>
-            <span className="text-xs font-mono text-slate-400">
-              {currentStep.partitions.length} block(s)
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {currentStep.partitions.map((group, idx) => (
-              <div
-                key={idx}
-                className="bg-slate-950 border border-indigo-900/40 rounded-xl p-3 shadow-sm hover:border-indigo-500/50 transition space-y-2"
-              >
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
-                  <span className="text-xs font-semibold text-indigo-400 font-mono">Group P{idx}</span>
-                  <span className="text-[10px] text-slate-500 font-mono">{group.length} state(s)</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {group.map(st => (
-                    <span
-                      key={st}
-                      className="px-2 py-0.5 text-xs font-mono font-medium bg-indigo-950/60 text-indigo-200 border border-indigo-800/40 rounded-md"
-                    >
-                      {st}
-                    </span>
-                  ))}
-                </div>
+        {/* Reachability */}
+        {step.type === 'reachability' && (
+          <div className="mt-6 grid sm:grid-cols-2 gap-4">
+            <div className="well p-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <Led tone="ok" />
+                <span className="caps">Reachable · {step.reachableStates.length}</span>
               </div>
-            ))}
+              <div className="flex flex-wrap gap-2">
+                {step.reachableStates.map(st => <StateChip key={st} name={st} />)}
+              </div>
+            </div>
+            <div className="well p-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <Led tone={step.unreachableStates.length ? 'bad' : 'muted'} />
+                <span className="caps">Unreachable · {step.unreachableStates.length}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {step.unreachableStates.length === 0 ? (
+                  <span className="text-sm text-muted">None. Every state can be reached.</span>
+                ) : (
+                  step.unreachableStates.map(st => <StateChip key={st} name={st} strike />)
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* SIGNATURE TABLES (FOR REFINEMENT STEPS) */}
-      {currentStep.signatures && currentStep.signatures.length > 0 && (
-        <div className="space-y-3 pt-2">
-          <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-            Transition Signature Table δ(state, symbol) → Target Group Index
-          </h4>
+        {/* Partition classes */}
+        {step.partitions.length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="caps">Classes</span>
+              <span className="font-mono text-xs text-muted">{step.partitions.length} blocks</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {step.partitions.map((group, idx) => {
+                const c = groupColor(idx);
+                return (
+                  <div
+                    key={idx}
+                    className="well p-4"
+                    style={{
+                      background: `linear-gradient(180deg, rgb(${c} / 0.10), rgb(var(--bg) / 0.85) 70%)`,
+                      boxShadow: `inset 0 2px 8px rgb(0 0 0 / 0.5), inset 0 0 0 1px rgb(${c} / 0.3), inset 0 3px 0 rgb(${c} / 0.8)`,
+                    }}
+                  >
+                    <div className="flex items-baseline justify-between mb-3">
+                      <span className="font-mono text-lg font-bold" style={{ color: `rgb(${c})` }}>P{idx}</span>
+                      <span className="font-mono text-xs text-muted">{group.length}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {group.map(st => <StateChip key={st} name={st} color={c} />)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-          <div className="overflow-x-auto border border-slate-800 rounded-lg">
-            <table className="w-full text-xs text-left text-slate-300 font-mono">
-              <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
-                <tr>
-                  <th className="px-4 py-2 border-r border-slate-800">State</th>
-                  {minimizationResult.originalDFA.alphabet.map(sym => (
-                    <th key={sym} className="px-4 py-2 border-r border-slate-800 text-center">
-                      Symbol '{sym}' (Target State → Group)
-                    </th>
-                  ))}
-                  <th className="px-4 py-2">Signature Key</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/80 bg-slate-900/60">
-                {currentStep.signatures.map(sig => (
-                  <tr key={sig.state} className="hover:bg-slate-800/40">
-                    <td className="px-4 py-2 font-semibold text-slate-200 border-r border-slate-800">
-                      {sig.state}
-                    </td>
-
-                    {minimizationResult.originalDFA.alphabet.map(sym => (
-                      <td key={sym} className="px-4 py-2 border-r border-slate-800 text-center">
-                        <span className="text-slate-400">{sig.targetStates[sym]}</span>
-                        <ArrowRight className="w-3 h-3 inline mx-1 text-slate-600" />
-                        <span className="px-1.5 py-0.5 bg-indigo-950 text-indigo-300 border border-indigo-800/60 rounded text-[11px]">
-                          P{sig.targetGroupIndices[sym]}
-                        </span>
-                      </td>
+        {/* Signatures */}
+        {step.signatures && step.signatures.length > 0 && (
+          <div className="mt-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+              <span className="caps">Transition signatures</span>
+              <span className="text-xs text-muted">
+                P numbers name the classes {step.type === 'completed' ? 'above' : 'from the previous step'}. Matching signatures stay together.
+              </span>
+            </div>
+            <div className="well overflow-x-auto p-2">
+              <table className="w-full text-sm border-separate border-spacing-y-1 border-spacing-x-0">
+                <thead>
+                  <tr className="text-left">
+                    <th className="caps font-semibold px-3 pb-1">State</th>
+                    {alphabet.map(sym => (
+                      <th key={sym} className="px-3 pb-1 font-mono text-xs text-muted font-semibold">
+                        on <span className="text-ink">{sym}</span>
+                      </th>
                     ))}
-
-                    <td className="px-4 py-2 text-indigo-300 font-medium">
-                      {sig.signatureKey}
-                    </td>
+                    <th className="caps font-semibold px-3 pb-1">Signature</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* FINAL STABLE STATE SUMMARY */}
-      {currentStep.isStable && (
-        <div className="bg-emerald-950/30 border border-emerald-800/60 rounded-xl p-4 space-y-3">
-          <h4 className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" />
-            Minimized DFA Construction Summary
-          </h4>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-            <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
-              <span className="text-slate-400 block text-[11px]">Original States</span>
-              <span className="font-bold text-slate-200 text-sm font-mono">
-                {minimizationResult.originalDFA.states.length} states
-              </span>
-            </div>
-
-            <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
-              <span className="text-slate-400 block text-[11px]">Reachable States</span>
-              <span className="font-bold text-slate-200 text-sm font-mono">
-                {minimizationResult.reachableStates.length} states
-              </span>
-            </div>
-
-            <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
-              <span className="text-slate-400 block text-[11px]">Minimized States</span>
-              <span className="font-bold text-emerald-400 text-sm font-mono">
-                {minimizationResult.minimizedDFA.states.length} states
-              </span>
-            </div>
-
-            <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
-              <span className="text-slate-400 block text-[11px]">Reduction Ratio</span>
-              <span className="font-bold text-indigo-400 text-sm font-mono">
-                {Math.round((1 - minimizationResult.minimizedDFA.states.length / minimizationResult.originalDFA.states.length) * 100)}% smaller
-              </span>
+                </thead>
+                <tbody>
+                  {step.signatures.map(sig => {
+                    const g = groupOf(sig.state);
+                    return (
+                      <tr key={sig.state} className="hover:bg-plate-hi/40">
+                        <td className="px-3 py-1 rounded-l-xl">
+                          <StateChip name={sig.state} color={g >= 0 ? groupColor(g) : undefined} />
+                        </td>
+                        {alphabet.map(sym => {
+                          const c = groupColor(sig.targetGroupIndices[sym]);
+                          return (
+                            <td key={sym} className="px-3 py-1 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5 font-mono">
+                                <span className="text-muted">{sig.targetStates[sym]}</span>
+                                <ArrowRight className="w-3 h-3 text-muted/70" />
+                                <span
+                                  className="inline-flex items-center h-6 px-2 rounded-md text-xs font-bold"
+                                  style={{ background: `rgb(${c} / 0.15)`, color: `rgb(${c})`, boxShadow: `inset 0 0 0 1px rgb(${c} / 0.4)` }}
+                                >
+                                  P{sig.targetGroupIndices[sym]}
+                                </span>
+                              </span>
+                            </td>
+                          );
+                        })}
+                        <td className="px-3 py-1 rounded-r-xl font-mono text-xs text-ink/80 whitespace-nowrap">{sig.signatureKey}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </Plate>
   );
 };

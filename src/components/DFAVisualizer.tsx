@@ -1,418 +1,344 @@
 import React, { useState } from 'react';
 import { DFA } from '../types/dfa';
-import { Network } from 'lucide-react';
+import { formatGroupLabel } from '../utils/dfaUtils';
+import { Plate, Segmented, groupColor } from './ui';
 
 interface DFAVisualizerProps {
   originalDFA: DFA;
   minimizedDFA: DFA;
-  activeOriginalState?: string;
-  activeMinimizedState?: string;
+  /** Partition at the step currently shown in the stepper */
+  partitions: string[][];
+  /** Final stable partition */
+  finalPartitions: string[][];
+  unreachable: string[];
+  stepNumber: number;
+  stepTotal: number;
 }
 
-interface NodePos {
-  x: number;
-  y: number;
-}
+type ViewMode = 'both' | 'original' | 'minimized';
 
 export const DFAVisualizer: React.FC<DFAVisualizerProps> = ({
   originalDFA,
   minimizedDFA,
-  activeOriginalState,
-  activeMinimizedState,
+  partitions,
+  finalPartitions,
+  unreachable,
+  stepNumber,
+  stepTotal,
 }) => {
-  const [viewMode, setViewMode] = useState<'both' | 'original' | 'minimized'>('both');
+  const [viewMode, setViewMode] = useState<ViewMode>('both');
+
+  const originalColor = (state: string) => {
+    const i = partitions.findIndex(g => g.includes(state));
+    return i >= 0 ? groupColor(i) : undefined;
+  };
+  const minimizedColor = (label: string) => {
+    const i = finalPartitions.findIndex(g => formatGroupLabel(g) === label);
+    return i >= 0 ? groupColor(i) : undefined;
+  };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
-      {/* Top Header & View Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-        <div>
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Network className="w-5 h-5 text-indigo-400" />
-            DFA Directed Graph Visualizer
-          </h2>
-          <p className="text-xs text-slate-400">Dynamic SVG layout showing states, transitions, start arrow, and double final rings.</p>
-        </div>
-
-        {/* View mode toggle */}
-        <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
-          <button
-            onClick={() => setViewMode('both')}
-            className={`px-3 py-1 rounded-md transition font-medium ${
-              viewMode === 'both' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Side-by-Side
-          </button>
-          <button
-            onClick={() => setViewMode('original')}
-            className={`px-3 py-1 rounded-md transition font-medium ${
-              viewMode === 'original' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Original Only
-          </button>
-          <button
-            onClick={() => setViewMode('minimized')}
-            className={`px-3 py-1 rounded-md transition font-medium ${
-              viewMode === 'minimized' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Minimized Only
-          </button>
-        </div>
-      </div>
-
-      {/* Graph Cards */}
-      <div className={`grid gap-4 ${viewMode === 'both' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
-        {(viewMode === 'both' || viewMode === 'original') && (
-          <SingleDFAGraphCard
+    <Plate
+      index="02"
+      title="Graph"
+      subtitle={
+        partitions.length > 0
+          ? `Original states are colored by their class at step ${stepNumber} of ${stepTotal}. Minimized states use the final classes.`
+          : `Step ${stepNumber} of ${stepTotal} has no classes yet. Faded states can't be reached from the start.`
+      }
+      actions={
+        <Segmented<ViewMode>
+          label="Graph view"
+          value={viewMode}
+          onChange={setViewMode}
+          options={[
+            { value: 'both', label: 'Both' },
+            { value: 'original', label: 'Original' },
+            { value: 'minimized', label: 'Minimized' },
+          ]}
+        />
+      }
+    >
+      <div className={`grid gap-4 ${viewMode === 'both' ? 'lg:grid-cols-2' : ''}`}>
+        {viewMode !== 'minimized' && (
+          <GraphCard
             dfa={originalDFA}
-            title="Original DFA"
-            subtitle={`${originalDFA.states.length} states, ${originalDFA.alphabet.length} symbols`}
-            badgeColor="bg-slate-800 text-slate-300"
-            activeState={activeOriginalState}
-            markerId="arrow-orig"
+            title="Original"
+            idPrefix="orig"
+            colorOf={originalColor}
+            unreachable={unreachable}
           />
         )}
-
-        {(viewMode === 'both' || viewMode === 'minimized') && (
-          <SingleDFAGraphCard
+        {viewMode !== 'original' && (
+          <GraphCard
             dfa={minimizedDFA}
-            title="Minimized DFA"
-            subtitle={`${minimizedDFA.states.length} states (Equivalence Classes)`}
-            badgeColor="bg-emerald-950 text-emerald-300 border border-emerald-700/60"
-            activeState={activeMinimizedState}
-            markerId="arrow-min"
+            title="Minimized"
+            idPrefix="min"
+            colorOf={minimizedColor}
+            unreachable={[]}
+            highlight
           />
         )}
       </div>
-    </div>
+    </Plate>
   );
 };
 
-interface SingleDFAGraphCardProps {
+interface GraphCardProps {
   dfa: DFA;
   title: string;
-  subtitle: string;
-  badgeColor: string;
-  activeState?: string;
-  markerId: string;
+  idPrefix: string;
+  colorOf: (state: string) => string | undefined;
+  unreachable: string[];
+  highlight?: boolean;
 }
 
-const SingleDFAGraphCard: React.FC<SingleDFAGraphCardProps> = ({
-  dfa,
-  title,
-  subtitle,
-  badgeColor,
-  activeState,
-  markerId,
-}) => {
-  const width = 460;
-  const height = 360;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const radius = Math.min(width, height) * 0.35;
-  const nodeRadius = 26;
+const W = 460;
+const H = 404;
+const R = 24;
+const MONO = '"JetBrains Mono", ui-monospace, monospace';
 
-  // Compute circular layout for nodes
-  const nodes: Record<string, NodePos> = {};
-  const numStates = dfa.states.length;
+const GraphCard: React.FC<GraphCardProps> = ({ dfa, title, idPrefix, colorOf, unreachable, highlight }) => {
+  const cx = W / 2;
+  const cy = H / 2;
+  const ring = Math.min(W, H) * 0.3;
 
-  dfa.states.forEach((state, index) => {
-    if (numStates === 1) {
-      nodes[state] = { x: centerX, y: centerY };
+  // Nodes grow to fit long merged labels like "{q1, q2, q5}"
+  const fontFor = (state: string) => (state.length > 3 ? 10 : 13);
+  const radius = (state: string) => Math.max(R, (state.length * fontFor(state) * 0.6) / 2 + 7);
+
+  const nodes: Record<string, { x: number; y: number }> = {};
+  dfa.states.forEach((state, i) => {
+    if (dfa.states.length === 1) {
+      nodes[state] = { x: cx, y: cy };
     } else {
-      // Start top-most (angle -pi/2)
-      const angle = (2 * Math.PI * index) / numStates - Math.PI / 2;
-      nodes[state] = {
-        x: centerX + radius * Math.cos(angle),
-        y: centerY + radius * Math.sin(angle),
-      };
+      const angle = (2 * Math.PI * i) / dfa.states.length - Math.PI / 2;
+      nodes[state] = { x: cx + ring * Math.cos(angle), y: cy + ring * Math.sin(angle) };
     }
   });
 
-  // Group transitions between state pairs for combined labels (e.g., A -> B on "0, 1")
-  const transitionPairs = new Map<string, string[]>();
-
+  // Group symbols per (from, to) so parallel transitions share one edge
+  const edges = new Map<string, string[]>();
   dfa.states.forEach(from => {
     dfa.alphabet.forEach(sym => {
       const to = dfa.transitions[from]?.[sym];
       if (to && nodes[from] && nodes[to]) {
-        const key = `${from}--->${to}`;
-        if (!transitionPairs.has(key)) {
-          transitionPairs.set(key, []);
-        }
-        transitionPairs.get(key)!.push(sym);
+        const key = `${from}\u0000${to}`;
+        if (!edges.has(key)) edges.set(key, []);
+        edges.get(key)!.push(sym);
       }
     });
   });
 
+  const arrow = `${idPrefix}-arrow`;
+  const arrowStart = `${idPrefix}-arrow-start`;
+  const shine = `${idPrefix}-shine`;
+
+  const edgeStroke = 'rgb(var(--muted) / 0.75)';
+
+  const label = (x: number, y: number, text: string, faded: boolean) => {
+    const w = Math.max(22, text.length * 7 + 12);
+    return (
+      <g opacity={faded ? 0.3 : 1}>
+        <rect x={x - w / 2} y={y - 9} width={w} height={18} rx={6} style={{ fill: 'rgb(var(--plate))', stroke: 'rgb(var(--line))' }} />
+        <text x={x} y={y + 4} textAnchor="middle" fontSize={11} fontWeight={700} fontFamily={MONO} style={{ fill: 'rgb(var(--ink))' }}>
+          {text}
+        </text>
+      </g>
+    );
+  };
+
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-between space-y-3 relative overflow-hidden">
-      <div className="w-full flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-white">{title}</h3>
-          <span className="text-[11px] text-slate-400">{subtitle}</span>
-        </div>
-        <span className={`px-2 py-0.5 text-xs font-mono rounded-md ${badgeColor}`}>
+    <div className="well p-3 sm:p-4 rounded-3xl">
+      <div className="flex items-center justify-between px-1">
+        <h3 className="text-base font-bold">{title}</h3>
+        <span
+          className={`font-mono text-xs font-bold px-2 h-6 inline-flex items-center rounded-lg ${
+            highlight ? 'bg-accent/15 text-accent ring-1 ring-inset ring-accent/40' : 'bg-plate-hi text-muted ring-1 ring-inset ring-line'
+          }`}
+        >
           |Q| = {dfa.states.length}
         </span>
       </div>
 
-      {/* SVG Canvas */}
-      <div className="w-full flex items-center justify-center bg-slate-900/50 rounded-xl border border-slate-800/80 p-2">
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="w-full h-auto max-h-[340px] select-none"
-        >
-          <defs>
-            <marker
-              id={markerId}
-              viewBox="0 0 10 10"
-              refX="8"
-              refY="5"
-              markerWidth="6"
-              markerHeight="6"
-              orient="auto-start-reverse"
-            >
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="#818cf8" />
-            </marker>
-            <marker
-              id={`${markerId}-active`}
-              viewBox="0 0 10 10"
-              refX="8"
-              refY="5"
-              markerWidth="7"
-              markerHeight="7"
-              orient="auto-start-reverse"
-            >
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="#34d399" />
-            </marker>
-          </defs>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto select-none" role="img" aria-label={`${title} DFA graph`}>
+        <defs>
+          <marker id={arrow} viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" style={{ fill: 'rgb(var(--muted))' }} />
+          </marker>
+          <marker id={arrowStart} viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" style={{ fill: 'rgb(var(--accent))' }} />
+          </marker>
+          <radialGradient id={shine} cx="35%" cy="28%" r="75%">
+            <stop offset="0%" stopColor="#fff" stopOpacity="0.6" />
+            <stop offset="38%" stopColor="#fff" stopOpacity="0.08" />
+            <stop offset="100%" stopColor="#000" stopOpacity="0.32" />
+          </radialGradient>
+        </defs>
 
-          {/* Render Transitions (Edges) */}
-          {Array.from(transitionPairs.entries()).map(([key, symbols]) => {
-            const [from, to] = key.split('--->');
-            const p1 = nodes[from];
-            const p2 = nodes[to];
-            if (!p1 || !p2) return null;
+        {/* Edges */}
+        {Array.from(edges.entries()).map(([key, symbols]) => {
+          const [from, to] = key.split('\u0000');
+          const p1 = nodes[from];
+          const p2 = nodes[to];
+          const text = symbols.join(', ');
+          const faded = unreachable.includes(from);
 
-            const labelText = symbols.join(', ');
-            const isSelfLoop = from === to;
-            const reverseKey = `${to}--->${from}`;
-            const hasReverse = from !== to && transitionPairs.has(reverseKey);
-
-            if (isSelfLoop) {
-              // Self loop curve above node
-              const loopX = p1.x;
-              const loopY = p1.y - nodeRadius - 8;
-              return (
-                <g key={key}>
-                  <path
-                    d={`M ${p1.x - 12} ${p1.y - nodeRadius + 4} C ${p1.x - 35} ${p1.y - nodeRadius - 40}, ${p1.x + 35} ${p1.y - nodeRadius - 40}, ${p1.x + 12} ${p1.y - nodeRadius + 4}`}
-                    fill="none"
-                    stroke="#6366f1"
-                    strokeWidth="1.75"
-                    markerEnd={`url(#${markerId})`}
-                  />
-                  <rect
-                    x={loopX - 14}
-                    y={loopY - 24}
-                    width={28}
-                    height={16}
-                    rx={4}
-                    fill="#0f172a"
-                    stroke="#4338ca"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x={loopX}
-                    y={loopY - 12}
-                    textAnchor="middle"
-                    fill="#c7d2fe"
-                    fontSize="10"
-                    fontFamily="monospace"
-                    fontWeight="bold"
-                  >
-                    {labelText}
-                  </text>
-                </g>
-              );
-            }
-
-            // Normal or Curved edge
-            const dx = p2.x - p1.x;
-            const dy = p2.y - p1.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist === 0) return null;
-
-            const unitX = dx / dist;
-            const unitY = dy / dist;
-
-            // Offset start & end points to circle edge
-            const startX = p1.x + unitX * nodeRadius;
-            const startY = p1.y + unitY * nodeRadius;
-            const endX = p2.x - unitX * nodeRadius;
-            const endY = p2.y - unitY * nodeRadius;
-
-            if (hasReverse) {
-              // Curved arc to prevent collision with reverse edge
-              const midX = (p1.x + p2.x) / 2;
-              const midY = (p1.y + p2.y) / 2;
-              const perpX = -unitY * 25;
-              const perpY = unitX * 25;
-              const ctrlX = midX + perpX;
-              const ctrlY = midY + perpY;
-
-              return (
-                <g key={key}>
-                  <path
-                    d={`M ${startX} ${startY} Q ${ctrlX} ${ctrlY} ${endX} ${endY}`}
-                    fill="none"
-                    stroke="#6366f1"
-                    strokeWidth="1.75"
-                    markerEnd={`url(#${markerId})`}
-                  />
-                  <rect
-                    x={ctrlX - 14}
-                    y={ctrlY - 9}
-                    width={28}
-                    height={16}
-                    rx={4}
-                    fill="#0f172a"
-                    stroke="#4338ca"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x={ctrlX}
-                    y={ctrlY + 3}
-                    textAnchor="middle"
-                    fill="#c7d2fe"
-                    fontSize="10"
-                    fontFamily="monospace"
-                    fontWeight="bold"
-                  >
-                    {labelText}
-                  </text>
-                </g>
-              );
-            } else {
-              // Straight line edge
-              const midX = (startX + endX) / 2;
-              const midY = (startY + endY) / 2;
-
-              return (
-                <g key={key}>
-                  <line
-                    x1={startX}
-                    y1={startY}
-                    x2={endX}
-                    y2={endY}
-                    stroke="#6366f1"
-                    strokeWidth="1.75"
-                    markerEnd={`url(#${markerId})`}
-                  />
-                  <rect
-                    x={midX - 14}
-                    y={midY - 10}
-                    width={28}
-                    height={16}
-                    rx={4}
-                    fill="#0f172a"
-                    stroke="#4338ca"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x={midX}
-                    y={midY + 2}
-                    textAnchor="middle"
-                    fill="#c7d2fe"
-                    fontSize="10"
-                    fontFamily="monospace"
-                    fontWeight="bold"
-                  >
-                    {labelText}
-                  </text>
-                </g>
-              );
-            }
-          })}
-
-          {/* Render Nodes */}
-          {dfa.states.map(state => {
-            const pos = nodes[state];
-            if (!pos) return null;
-
-            const isStart = state === dfa.startState;
-            const isFinal = dfa.finalStates.includes(state);
-            const isActive = activeState === state;
-
+          if (from === to) {
+            // Point the loop away from the ring's center so it doesn't cross other edges
+            const rr = radius(from);
+            const a = dfa.states.length === 1 ? -Math.PI / 2 : Math.atan2(p1.y - cy, p1.x - cx);
+            const at = (ang: number, d: number) => [p1.x + d * Math.cos(ang), p1.y + d * Math.sin(ang)];
+            const [s1x, s1y] = at(a - 0.45, rr);
+            const [e1x, e1y] = at(a + 0.45, rr + 2);
+            const [c1x, c1y] = at(a - 0.8, rr + 46);
+            const [c2x, c2y] = at(a + 0.8, rr + 46);
+            const [lx, ly] = at(a, rr + 36);
             return (
-              <g key={state} className="cursor-pointer">
-                {/* Start State Arrow */}
-                {isStart && (
-                  <g>
-                    <path
-                      d={`M ${pos.x - nodeRadius - 28} ${pos.y} L ${pos.x - nodeRadius - 2} ${pos.y}`}
-                      stroke="#10b981"
-                      strokeWidth="2.5"
-                      markerEnd={`url(#${markerId}-active)`}
-                    />
-                    <text
-                      x={pos.x - nodeRadius - 32}
-                      y={pos.y + 4}
-                      fill="#34d399"
-                      fontSize="10"
-                      fontWeight="bold"
-                      textAnchor="end"
-                    >
-                      Start
-                    </text>
-                  </g>
-                )}
-
-                {/* Outer Ring for Final States (Double Circle) */}
-                {isFinal && (
-                  <circle
-                    cx={pos.x}
-                    cy={pos.y}
-                    r={nodeRadius + 4}
-                    fill="none"
-                    stroke={isActive ? '#34d399' : '#10b981'}
-                    strokeWidth="2"
-                    strokeDasharray={isActive ? '4,2' : 'none'}
-                  />
-                )}
-
-                {/* Main Node Circle */}
-                <circle
-                  cx={pos.x}
-                  cy={pos.y}
-                  r={nodeRadius}
-                  fill={isActive ? '#065f46' : isFinal ? '#022c22' : '#1e1b4b'}
-                  stroke={isActive ? '#34d399' : isFinal ? '#10b981' : '#6366f1'}
-                  strokeWidth={isActive ? '3' : '2'}
-                  className="transition-colors duration-200"
+              <g key={key}>
+                <path
+                  d={`M ${s1x} ${s1y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${e1x} ${e1y}`}
+                  fill="none"
+                  strokeWidth={1.75}
+                  style={{ stroke: edgeStroke }}
+                  opacity={faded ? 0.3 : 1}
+                  markerEnd={`url(#${arrow})`}
                 />
-
-                {/* Node Label Text */}
-                <text
-                  x={pos.x}
-                  y={pos.y + 4}
-                  textAnchor="middle"
-                  fill={isActive ? '#a7f3d0' : '#ffffff'}
-                  fontSize={state.length > 5 ? '9' : state.length > 3 ? '10' : '12'}
-                  fontFamily="monospace"
-                  fontWeight="bold"
-                >
-                  {state}
-                </text>
+                {label(lx, ly, text, faded)}
               </g>
             );
-          })}
-        </svg>
-      </div>
+          }
+
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist === 0) return null;
+          const ux = dx / dist;
+          const uy = dy / dist;
+          const sx = p1.x + ux * radius(from);
+          const sy = p1.y + uy * radius(from);
+          const ex = p2.x - ux * (radius(to) + 2);
+          const ey = p2.y - uy * (radius(to) + 2);
+
+          if (edges.has(`${to}\u0000${from}`)) {
+            const qx = (p1.x + p2.x) / 2 - uy * 28;
+            const qy = (p1.y + p2.y) / 2 + ux * 28;
+            // Label sits on the curve's midpoint
+            const lx = 0.25 * sx + 0.5 * qx + 0.25 * ex;
+            const ly = 0.25 * sy + 0.5 * qy + 0.25 * ey;
+            return (
+              <g key={key}>
+                <path
+                  d={`M ${sx} ${sy} Q ${qx} ${qy} ${ex} ${ey}`}
+                  fill="none"
+                  strokeWidth={1.75}
+                  style={{ stroke: edgeStroke }}
+                  opacity={faded ? 0.3 : 1}
+                  markerEnd={`url(#${arrow})`}
+                />
+                {label(lx, ly, text, faded)}
+              </g>
+            );
+          }
+
+          return (
+            <g key={key}>
+              <line
+                x1={sx}
+                y1={sy}
+                x2={ex}
+                y2={ey}
+                strokeWidth={1.75}
+                style={{ stroke: edgeStroke }}
+                opacity={faded ? 0.3 : 1}
+                markerEnd={`url(#${arrow})`}
+              />
+              {label((sx + ex) / 2, (sy + ey) / 2, text, faded)}
+            </g>
+          );
+        })}
+
+        {/* Nodes */}
+        {dfa.states.map(state => {
+          const { x, y } = nodes[state];
+          const isStart = state === dfa.startState;
+          const isFinal = dfa.finalStates.includes(state);
+          const faded = unreachable.includes(state);
+          const color = faded ? undefined : colorOf(state);
+          const fontSize = fontFor(state);
+          const r = radius(state);
+
+          return (
+            <g key={state} opacity={faded ? 0.35 : 1}>
+              {isStart && (
+                <g>
+                  <line
+                    x1={x - r - 34}
+                    y1={y}
+                    x2={x - r - 5}
+                    y2={y}
+                    strokeWidth={2.5}
+                    style={{ stroke: 'rgb(var(--accent))' }}
+                    markerEnd={`url(#${arrowStart})`}
+                  />
+                  <text
+                    x={x - r - 38}
+                    y={y + 4}
+                    textAnchor="end"
+                    fontSize={10}
+                    fontWeight={700}
+                    fontFamily={MONO}
+                    style={{ fill: 'rgb(var(--accent))' }}
+                  >
+                    start
+                  </text>
+                </g>
+              )}
+
+              {/* soft contact shadow */}
+              <ellipse cx={x} cy={y + r + 5} rx={r * 0.8} ry={4} fill="#000" opacity={0.4} />
+
+              {isFinal && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={r + 5}
+                  fill="none"
+                  strokeWidth={2}
+                  strokeDasharray={faded ? '4 3' : undefined}
+                  style={{ stroke: color ? `rgb(${color})` : 'rgb(var(--ink) / 0.7)' }}
+                />
+              )}
+
+              <circle
+                cx={x}
+                cy={y}
+                r={r}
+                strokeWidth={faded ? 1.5 : 1}
+                strokeDasharray={faded ? '4 3' : undefined}
+                style={{
+                  fill: color ? `rgb(${color})` : 'rgb(var(--plate-hi))',
+                  stroke: faded ? 'rgb(var(--muted))' : 'rgb(0 0 0 / 0.45)',
+                  transition: 'fill 0.35s ease',
+                }}
+              />
+              <circle cx={x} cy={y} r={r} fill={`url(#${shine})`} pointerEvents="none" />
+
+              <text
+                x={x}
+                y={y + fontSize * 0.36}
+                textAnchor="middle"
+                fontSize={fontSize}
+                fontWeight={800}
+                fontFamily={MONO}
+                style={{ fill: color ? '#0c0b0a' : 'rgb(var(--ink))' }}
+              >
+                {state}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 };

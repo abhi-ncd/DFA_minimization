@@ -1,21 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { DFA, ValidationResult, PresetTestCase } from '../types/dfa';
-import { PRESET_DFAS } from '../utils/dfaUtils';
-import { AlertCircle, AlertTriangle, CheckCircle2, Layers, Plus } from 'lucide-react';
+import { DFA, ValidationResult } from '../types/dfa';
+import { Play, CircleDot, Plus } from 'lucide-react';
+import { Plate, Key, Led, StateChip } from './ui';
+import { tick } from '../utils/sound';
 
 interface DFAFormProps {
   dfa: DFA;
   validation: ValidationResult;
   onChange: (updatedDFA: DFA) => void;
-  onSelectPreset: (preset: PresetTestCase) => void;
 }
 
-export const DFAForm: React.FC<DFAFormProps> = ({
-  dfa,
-  validation,
-  onChange,
-  onSelectPreset,
-}) => {
+export const DFAForm: React.FC<DFAFormProps> = ({ dfa, validation, onChange }) => {
   const [statesInput, setStatesInput] = useState(dfa.states.join(', '));
   const [alphabetInput, setAlphabetInput] = useState(dfa.alphabet.join(', '));
 
@@ -25,7 +20,6 @@ export const DFAForm: React.FC<DFAFormProps> = ({
     setAlphabetInput(dfa.alphabet.join(', '));
   }, [dfa]);
 
-  // Handle States text input change
   const handleStatesChange = (val: string) => {
     setStatesInput(val);
     const parsedStates = val
@@ -33,7 +27,6 @@ export const DFAForm: React.FC<DFAFormProps> = ({
       .map(s => s.trim())
       .filter(Boolean);
 
-    // Filter out duplicates preserving order
     const newStates = Array.from(new Set(parsedStates));
 
     let newStart = dfa.startState;
@@ -43,12 +36,10 @@ export const DFAForm: React.FC<DFAFormProps> = ({
 
     const newFinals = dfa.finalStates.filter(s => newStates.includes(s));
 
-    // Rebuild transitions structure safely
     const newTransitions: Record<string, Record<string, string>> = {};
     newStates.forEach(st => {
       newTransitions[st] = {};
       dfa.alphabet.forEach(sym => {
-        // Keep existing target if valid, else default to first state
         const existing = dfa.transitions[st]?.[sym];
         newTransitions[st][sym] = newStates.includes(existing) ? existing : (newStates[0] || '');
       });
@@ -89,7 +80,6 @@ export const DFAForm: React.FC<DFAFormProps> = ({
     handleStatesChange([...dfa.states, newState].join(', '));
   };
 
-  // Handle Alphabet text input change
   const handleAlphabetChange = (val: string) => {
     setAlphabetInput(val);
     const parsedSyms = val
@@ -115,250 +105,171 @@ export const DFAForm: React.FC<DFAFormProps> = ({
     });
   };
 
-  // Handle Transition change
   const handleTransitionChange = (fromState: string, symbol: string, toState: string) => {
-    const updatedTransitions = {
-      ...dfa.transitions,
-      [fromState]: {
-        ...(dfa.transitions[fromState] || {}),
-        [symbol]: toState,
-      },
-    };
-
     onChange({
       ...dfa,
-      transitions: updatedTransitions,
+      transitions: {
+        ...dfa.transitions,
+        [fromState]: {
+          ...(dfa.transitions[fromState] || {}),
+          [symbol]: toState,
+        },
+      },
     });
   };
 
-  // Handle Final State toggle
   const toggleFinalState = (state: string) => {
     const isFinal = dfa.finalStates.includes(state);
-    const updatedFinals = isFinal
-      ? dfa.finalStates.filter(s => s !== state)
-      : [...dfa.finalStates, state];
-
     onChange({
       ...dfa,
-      finalStates: updatedFinals,
+      finalStates: isFinal ? dfa.finalStates.filter(s => s !== state) : [...dfa.finalStates, state],
     });
   };
 
+  const hasWarnings = validation.warnings.length > 0;
+
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-6">
-      {/* Top Header & Presets */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+    <Plate index="01" title="Define" subtitle="Type the states and alphabet, then wire up δ. Tap ▶ to pick the start state and ◉ to mark accepting states.">
+      <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Layers className="w-5 h-5 text-indigo-400" />
-            DFA Definition & Input
-          </h2>
-          <p className="text-xs text-slate-400">Configure states, alphabet, start/final states, and transitions dynamically.</p>
-        </div>
-
-        {/* Preset Selector */}
-        <div className="flex items-center space-x-2">
-          <label className="text-xs text-slate-400 whitespace-nowrap">Load Preset:</label>
-          <select
-            onChange={(e) => {
-              const preset = PRESET_DFAS.find(p => p.id === e.target.value);
-              if (preset) onSelectPreset(preset);
-            }}
-            defaultValue="example-prompt"
-            className="bg-slate-800 text-slate-200 text-xs rounded-lg border border-slate-700 px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          >
-            {PRESET_DFAS.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Validation Status Indicator */}
-      {validation.isValid ? (
-        <div className="flex items-center space-x-2 bg-emerald-950/40 border border-emerald-800/60 text-emerald-400 text-xs px-3.5 py-2 rounded-lg">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>DFA is valid and ready for minimization analysis.</span>
-        </div>
-      ) : (
-        <div className="bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs p-3 rounded-lg space-y-1">
-          <div className="flex items-center space-x-2 font-semibold text-rose-400">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>Invalid DFA Definition:</span>
-          </div>
-          <ul className="list-disc list-inside space-y-0.5 text-slate-300 pl-1">
-            {validation.errors.map((err, idx) => (
-              <li key={idx}>{err}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {validation.warnings.length > 0 && (
-        <div className="bg-amber-950/40 border border-amber-800/60 text-amber-300 text-xs p-3 rounded-lg space-y-1">
-          <div className="flex items-center space-x-2 font-semibold text-amber-400">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>Notice:</span>
-          </div>
-          <ul className="list-disc list-inside space-y-0.5 pl-1">
-            {validation.warnings.map((warn, idx) => (
-              <li key={idx}>{warn}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Basic Inputs Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* States Input */}
-        <div>
-          <div className="flex items-center justify-between gap-2 mb-1.5">
-            <label htmlFor="dfa-states" className="block text-xs font-semibold text-slate-300">
-              States Set (Q) <span className="text-slate-500 font-normal">(Comma/Space separated)</span>
-            </label>
-            <button
-              type="button"
-              onClick={addState}
-              className="inline-flex items-center gap-1 rounded-md border border-indigo-500/40 bg-indigo-500/10 px-2 py-1 text-xs font-medium text-indigo-300 hover:bg-indigo-500/20 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add state
-            </button>
+          <div className="flex items-center justify-between gap-2 mb-2 h-8">
+            <label htmlFor="dfa-states" className="caps">States <span className="normal-case tracking-normal text-[13px]">Q</span></label>
+            <Key size="xs" onClick={addState}>
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+              Add
+            </Key>
           </div>
           <input
             id="dfa-states"
             type="text"
             value={statesInput}
             onChange={(e) => handleStatesChange(e.target.value)}
-            placeholder="A, B, C, D, E"
-            className="w-full bg-slate-950 border border-slate-700 text-slate-100 text-sm font-mono rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            placeholder="A, B, C"
+            spellCheck={false}
+            className="field h-12 w-full text-[15px]"
           />
-          <span className="text-[11px] text-slate-500 mt-1 block">
-            {dfa.states.length} state(s): [{dfa.states.join(', ')}]
-          </span>
+          <p className="mt-2 text-xs text-muted font-mono">{dfa.states.length} states</p>
         </div>
 
-        {/* Alphabet Input */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Input Alphabet (Σ) <span className="text-slate-500 font-normal">(Comma/Space separated)</span>
-          </label>
+          <div className="flex items-center mb-2 h-8">
+            <label htmlFor="dfa-alphabet" className="caps">Alphabet <span className="normal-case tracking-normal text-[13px]">Σ</span></label>
+          </div>
           <input
+            id="dfa-alphabet"
             type="text"
             value={alphabetInput}
             onChange={(e) => handleAlphabetChange(e.target.value)}
             placeholder="0, 1"
-            className="w-full bg-slate-950 border border-slate-700 text-slate-100 text-sm font-mono rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            spellCheck={false}
+            className="field h-12 w-full text-[15px]"
           />
-          <span className="text-[11px] text-slate-500 mt-1 block">
-            {dfa.alphabet.length} symbol(s): [{dfa.alphabet.join(', ')}]
-          </span>
+          <p className="mt-2 text-xs text-muted font-mono">{dfa.alphabet.length} symbols</p>
         </div>
       </div>
 
-      {/* Start State & Final States Selectors */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-        {/* Start State Dropdown */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Start State (q₀)
-          </label>
-          <select
-            value={dfa.startState}
-            onChange={(e) => onChange({ ...dfa, startState: e.target.value })}
-            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm font-mono rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          >
-            {dfa.states.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Final States Multi-Select Badges */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Final / Accept States (F) <span className="text-slate-500 font-normal">(Click to toggle)</span>
-          </label>
-          <div className="flex flex-wrap gap-2 min-h-[40px] p-2 bg-slate-950 border border-slate-700 rounded-lg items-center">
-            {dfa.states.map(st => {
-              const isFinal = dfa.finalStates.includes(st);
-              return (
-                <button
-                  key={st}
-                  type="button"
-                  onClick={() => toggleFinalState(st)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-mono font-medium transition border ${
-                    isFinal
-                      ? 'bg-emerald-600/30 text-emerald-300 border-emerald-500/50 shadow-sm'
-                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
-                  }`}
-                >
-                  {isFinal ? `★ ${st}` : st}
-                </button>
-              );
-            })}
+      {/* Validation strip */}
+      <div className="well mt-5 px-4 py-3.5 space-y-2" role="status" aria-live="polite">
+        {validation.isValid ? (
+          <div className="flex items-center gap-3 text-sm font-semibold">
+            <Led tone={hasWarnings ? 'warn' : 'ok'} />
+            <span>{hasWarnings ? 'Valid, with a note' : 'Valid. Results update as you edit.'}</span>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 text-sm font-semibold text-bad">
+              <Led tone="bad" />
+              <span>{validation.errors.length} {validation.errors.length === 1 ? 'problem' : 'problems'} to fix</span>
+            </div>
+            <ul className="pl-[22px] space-y-1 text-[13px] text-ink/80">
+              {validation.errors.map((err, idx) => <li key={idx}>{err}</li>)}
+            </ul>
+          </>
+        )}
+        {hasWarnings && (
+          <ul className="pl-[22px] space-y-1 text-[13px] text-warn/90">
+            {validation.warnings.map((warn, idx) => <li key={idx}>{warn}</li>)}
+          </ul>
+        )}
       </div>
 
-      {/* Dynamic Transition Table */}
-      <div className="pt-2">
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-semibold text-slate-300">
-            Transition Function Table δ(State, Symbol) → Target State
-          </label>
-          <span className="text-[11px] text-indigo-400 font-mono">
-            {dfa.states.length} × {dfa.alphabet.length} matrix
-          </span>
+      {/* Transition table */}
+      <div className="mt-6">
+        <div className="flex items-center justify-between mb-3">
+          <span className="caps">Transitions <span className="normal-case tracking-normal text-[13px]">δ</span></span>
+          <span className="font-mono text-xs text-muted">{dfa.states.length} × {dfa.alphabet.length}</span>
         </div>
 
-        <div className="overflow-x-auto border border-slate-800 rounded-lg">
-          <table className="w-full text-xs text-left text-slate-300">
-            <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
-              <tr>
-                <th className="px-4 py-2.5 w-32 border-r border-slate-800">State (q)</th>
+        <div className="well overflow-x-auto p-2">
+          <table className="w-full text-sm border-separate border-spacing-y-1.5 border-spacing-x-0">
+            <thead>
+              <tr className="text-left">
+                <th className="caps font-semibold px-2 pb-1">State</th>
+                <th className="caps font-semibold px-1 pb-1 text-center">Start</th>
+                <th className="caps font-semibold px-1 pb-1 text-center">Accept</th>
                 {dfa.alphabet.map(sym => (
-                  <th key={sym} className="px-4 py-2.5 font-mono text-center border-r border-slate-800">
-                    Symbol '{sym}'
+                  <th key={sym} className="px-1.5 pb-1 text-center font-mono text-xs text-muted font-semibold normal-case">
+                    on <span className="text-ink">{sym}</span>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/80 bg-slate-900/60">
+            <tbody>
               {dfa.states.map(state => {
                 const isStart = state === dfa.startState;
                 const isFinal = dfa.finalStates.includes(state);
-
                 return (
-                  <tr key={state} className="hover:bg-slate-800/40">
-                    <td className="px-4 py-2 font-mono font-medium border-r border-slate-800 flex items-center space-x-1.5">
-                      <span className="text-indigo-400">{isStart ? '➔ ' : ''}</span>
-                      <span className={isFinal ? 'text-emerald-400 font-bold' : 'text-slate-200'}>
-                        {state}
-                      </span>
-                      {isFinal && <span className="text-emerald-400 text-[10px]">★</span>}
+                  <tr key={state}>
+                    <td className="px-2">
+                      <StateChip name={state} />
                     </td>
-
-                    {dfa.alphabet.map(symbol => {
-                      const targetValue = dfa.transitions[state]?.[symbol] || '';
-                      return (
-                        <td key={symbol} className="px-3 py-1.5 border-r border-slate-800 text-center">
-                          <select
-                            value={targetValue}
-                            onChange={(e) => handleTransitionChange(state, symbol, e.target.value)}
-                            className="bg-slate-950 border border-slate-700 text-slate-200 text-xs font-mono rounded px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:outline-none w-full text-center"
-                          >
-                            {dfa.states.map(targetState => (
-                              <option key={targetState} value={targetState}>
-                                {targetState}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                      );
-                    })}
+                    <td className="px-1 text-center">
+                      <button
+                        type="button"
+                        className="toggle"
+                        data-on={isStart || undefined}
+                        aria-pressed={isStart}
+                        aria-label={`Make ${state} the start state`}
+                        title="Start state"
+                        onClick={() => {
+                          if (isStart) return;
+                          tick('low');
+                          onChange({ ...dfa, startState: state });
+                        }}
+                      >
+                        <Play className="w-3.5 h-3.5" fill="currentColor" />
+                      </button>
+                    </td>
+                    <td className="px-1 text-center">
+                      <button
+                        type="button"
+                        className="toggle"
+                        data-on={isFinal || undefined}
+                        aria-pressed={isFinal}
+                        aria-label={`Toggle ${state} as accepting`}
+                        title="Accepting state"
+                        onClick={() => {
+                          tick('low');
+                          toggleFinalState(state);
+                        }}
+                      >
+                        <CircleDot className="w-4 h-4" strokeWidth={2.5} />
+                      </button>
+                    </td>
+                    {dfa.alphabet.map(symbol => (
+                      <td key={symbol} className="px-1">
+                        <select
+                          value={dfa.transitions[state]?.[symbol] || ''}
+                          onChange={(e) => handleTransitionChange(state, symbol, e.target.value)}
+                          aria-label={`δ(${state}, ${symbol})`}
+                          className="field field-select h-9 w-full min-w-[72px] text-[13px] font-bold rounded-xl pl-3"
+                        >
+                          {dfa.states.map(target => (
+                            <option key={target} value={target}>{target}</option>
+                          ))}
+                        </select>
+                      </td>
+                    ))}
                   </tr>
                 );
               })}
@@ -366,6 +277,6 @@ export const DFAForm: React.FC<DFAFormProps> = ({
           </table>
         </div>
       </div>
-    </div>
+    </Plate>
   );
 };

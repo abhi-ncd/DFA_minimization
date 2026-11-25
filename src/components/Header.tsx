@@ -1,54 +1,83 @@
-import React from 'react';
-import { Cpu, RotateCcw, Play } from 'lucide-react';
+import React, { useState } from 'react';
+import { RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import { Key } from './ui';
+import { isSoundOn, setSoundOn, tick } from '../utils/sound';
+
+export const SKINS = ['ember', 'volt', 'ultra', 'ice'] as const;
+export type Skin = (typeof SKINS)[number];
+
+const SWATCH: Record<Skin, string> = {
+  ember: 'linear-gradient(180deg,#ff9c6c,#ff6a2b)',
+  volt: 'linear-gradient(180deg,#e6ff9c,#cdff3a)',
+  ultra: 'linear-gradient(180deg,#bcaaff,#8b6cff)',
+  ice: 'linear-gradient(180deg,#9cecff,#40d6ff)',
+};
 
 interface HeaderProps {
-  onResetToExample: () => void;
-  onAutoRunAll: () => void;
+  skin: Skin;
+  onSkinChange: (skin: Skin) => void;
+  onReset: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({
-  onResetToExample,
-  onAutoRunAll,
-}) => {
+export const Header: React.FC<HeaderProps> = ({ skin, onSkinChange, onReset }) => {
+  const [sound, setSound] = useState(isSoundOn());
+
   return (
-    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 shadow-xl backdrop-blur bg-opacity-90">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
-        {/* Title and Badge */}
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-indigo-600/20 border border-indigo-500/30 rounded-xl text-indigo-400">
-            <Cpu className="w-6 h-6" />
+    <header className="sticky top-0 z-40 bg-bg/75 backdrop-blur-xl border-b border-line/50">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 sm:h-[76px] flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            aria-hidden
+            className="key key-accent w-10 h-10 sm:w-11 sm:h-11 rounded-2xl grid place-items-center font-mono text-xl font-bold pointer-events-none shrink-0"
+          >
+            δ
           </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold text-white tracking-tight">DFA Minimization Simulator</h1>
-              <span className="px-2 py-0.5 text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">
-                Automata Theory
-              </span>
-            </div>
-            <p className="text-xs text-slate-400">
-              Interactive Partition Refinement & Equivalence Proof Tool
-            </p>
+          <div className="min-w-0 sr-only min-[440px]:not-sr-only">
+            <h1 className="text-lg sm:text-[22px] font-extrabold tracking-[-0.02em] leading-none">DFA Minimizer</h1>
+            <p className="text-xs text-muted mt-1 hidden sm:block truncate">Partition refinement, one step at a time</p>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          <button
-            onClick={onResetToExample}
-            className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition"
-            title="Load standard project example"
-          >
-            <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-            <span>Load Example</span>
-          </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="well flex items-center gap-1.5 p-1.5 rounded-2xl" role="radiogroup" aria-label="Color skin">
+            {SKINS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                role="radio"
+                aria-checked={skin === s}
+                aria-label={`${s} skin`}
+                title={s}
+                data-on={skin === s || undefined}
+                onClick={() => {
+                  tick('low');
+                  onSkinChange(s);
+                }}
+                className="swatch w-6 h-6 sm:w-7 sm:h-7 rounded-[10px]"
+                style={{ background: SWATCH[s] }}
+              />
+            ))}
+          </div>
 
-          <button
-            onClick={onAutoRunAll}
-            className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm transition"
+          <Key
+            size="icon"
+            on={sound}
+            aria-label={sound ? 'Turn sound off' : 'Turn sound on'}
+            title={sound ? 'Sound on' : 'Sound off'}
+            onClick={() => {
+              const next = !sound;
+              setSoundOn(next);
+              setSound(next);
+              if (next) tick('high');
+            }}
           >
-            <Play className="w-3.5 h-3.5" />
-            <span>Run Minimization</span>
-          </button>
+            {sound ? <Volume2 className="w-[18px] h-[18px]" /> : <VolumeX className="w-[18px] h-[18px]" />}
+          </Key>
+
+          <Key size="md" onClick={onReset} title="Load the standard example">
+            <RotateCcw className="w-4 h-4" />
+            <span className="hidden sm:inline">Reset</span>
+          </Key>
         </div>
       </div>
     </header>
