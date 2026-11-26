@@ -66,7 +66,7 @@ export const StringSimulator: React.FC<StringSimulatorProps> = ({
         onChange={(e) => setInput(e.target.value)}
         placeholder="01, 101, 00"
         spellCheck={false}
-        className="field h-14 w-full text-lg"
+        className="field h-14 w-full text-lg rounded-full px-5"
       />
 
       {/* Verdict */}
@@ -74,16 +74,16 @@ export const StringSimulator: React.FC<StringSimulatorProps> = ({
         <div className="flex items-center gap-4">
           <Led tone={allMatch ? 'ok' : 'bad'} />
           <div>
-            <div className={`text-3xl sm:text-4xl font-extrabold tracking-[-0.02em] leading-none ${allMatch ? 'text-ok' : 'text-bad'}`}>
+            <div className={`text-4xl sm:text-5xl font-black tracking-[-0.045em] leading-none ${allMatch ? 'text-ink' : 'text-accent'}`}>
               {allMatch ? 'Equivalent' : 'Mismatch'}
             </div>
-            <div className="mt-2 text-sm text-muted">
+            <div className="mt-2.5 font-mono text-[11.5px] uppercase tracking-[0.08em] text-muted">
               {agree} of {results.length} {results.length === 1 ? 'string agrees' : 'strings agree'}
             </div>
           </div>
         </div>
-        <div className="font-mono text-xl sm:text-2xl font-bold">
-          L(M) <span className={allMatch ? 'text-ok' : 'text-bad'}>{allMatch ? '=' : '≠'}</span> L(M′)
+        <div className="font-num text-3xl sm:text-4xl font-semibold">
+          L(M) <span className="text-accent">{allMatch ? '=' : '≠'}</span> L(M′)
         </div>
       </div>
 
@@ -108,7 +108,7 @@ export const StringSimulator: React.FC<StringSimulatorProps> = ({
                   setActive(r.inputString);
                 }}
                 className={`well w-full text-left grid grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:grid-cols-[minmax(0,1fr)_110px_110px_56px] items-center gap-2 sm:gap-3 px-4 py-2.5 transition ${
-                  on ? 'ring-2 ring-accent shadow-[0_0_22px_-6px_rgb(var(--accent)/0.6)]' : 'hover:ring-1 hover:ring-line'
+                  on ? 'ring-2 ring-inset ring-ink' : 'hover:bg-plate-hi'
                 }`}
               >
                 <span className="font-mono text-base font-bold truncate">{show(r.inputString)}</span>
@@ -148,13 +148,17 @@ const Lane: React.FC<{ title: string; result: SimulationResult }> = ({ title, re
   return (
     <div className="well p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-bold">{title}</span>
+        <span className="text-base font-black tracking-[-0.03em]">{title}</span>
         <Verdict accepted={result.isAccepted} />
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         {result.path.map((st, i) => (
           <React.Fragment key={i}>
-            <StateChip name={st} color={i === lastIdx ? (result.isAccepted ? 'var(--ok)' : 'var(--bad)') : undefined} />
+            <StateChip
+              name={st}
+              color={i === lastIdx ? (result.isAccepted ? 'var(--ok)' : 'var(--bad)') : undefined}
+              textColor="var(--on-status)"
+            />
             {i < result.trace.length && (
               <span className="inline-flex items-center gap-1 px-1 font-mono text-xs text-muted">
                 <span className="text-accent font-bold">{result.trace[i].symbol}</span>

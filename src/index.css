@@ -2,238 +2,223 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ---------- Skins ---------- */
+/* ---------- Skins ----------
+   TrustCast design language: a near-white "Day" skin and a near-black "Night" skin,
+   flat cards with big radii, one signal red, ink-filled pills for whatever is selected,
+   heavy tight-tracked display type, mono uppercase labels and extruded numerals. */
 :root,
-[data-skin="ember"] {
-  --bg: 14 12 11;
-  --plate: 26 23 21;
-  --plate-hi: 39 35 32;
-  --line: 54 49 45;
-  --ink: 246 240 233;
-  --muted: 152 143 134;
-  --accent: 255 106 43;
-  --accent-hi: 255 156 108;
-  --accent-deep: 160 50 8;
-  --accent-ink: 28 10 2;
-}
-
-[data-skin="volt"] {
-  --bg: 11 13 10;
-  --plate: 21 25 20;
-  --plate-hi: 32 37 30;
-  --line: 46 53 43;
-  --ink: 240 246 232;
-  --muted: 140 152 132;
-  --accent: 205 255 58;
-  --accent-hi: 230 255 156;
-  --accent-deep: 100 140 0;
-  --accent-ink: 16 22 0;
-}
-
-[data-skin="ultra"] {
-  --bg: 12 11 19;
-  --plate: 24 22 37;
-  --plate-hi: 35 32 52;
-  --line: 50 46 72;
-  --ink: 240 238 255;
-  --muted: 142 137 172;
-  --accent: 139 108 255;
-  --accent-hi: 188 170 255;
-  --accent-deep: 70 40 185;
+[data-skin="day"] {
+  color-scheme: light;
+  --bg: 242 242 242;
+  --plate: 255 255 255;
+  --plate-hi: 228 228 228;
+  --line: 218 218 218;
+  --ink: 17 17 17;
+  --muted: 112 112 112;
+  --accent: 255 42 42;
+  --accent-hi: 255 90 90;
+  --accent-deep: 168 10 10;
   --accent-ink: 255 255 255;
+  --ok: 31 143 85;
+  --bad: 215 50 43;
+  --warn: 166 106 0;
+  --on-status: 255 255 255;
+  /* extrusion colour behind giant words, and the inverted (ink-filled) panel */
+  --ext: 58 58 58;
+  --panel: 17 17 17;
 }
 
-[data-skin="ice"] {
-  --bg: 9 13 16;
-  --plate: 18 25 30;
-  --plate-hi: 28 37 44;
-  --line: 41 53 62;
-  --ink: 232 244 250;
-  --muted: 130 150 162;
-  --accent: 64 214 255;
-  --accent-hi: 156 236 255;
-  --accent-deep: 0 112 158;
-  --accent-ink: 2 18 26;
+[data-skin="night"] {
+  color-scheme: dark;
+  --bg: 28 28 28;
+  --plate: 38 38 38;
+  --plate-hi: 51 51 51;
+  --line: 62 62 62;
+  --ink: 242 242 242;
+  --muted: 150 150 150;
+  --ok: 47 191 113;
+  --bad: 255 77 77;
+  --warn: 242 194 0;
+  --on-status: 17 17 17;
+  --ext: 120 120 120;
+  --panel: 242 242 242;
 }
 
 :root {
-  --ok: 74 222 128;
-  --bad: 255 84 104;
-  --warn: 255 196 61;
+  /* Partition class colours: bright enough to carry dark text in both skins */
+  --g0: 58 160 255;
+  --g1: 255 138 31;
+  --g2: 255 95 162;
+  --g3: 47 191 113;
+  --g4: 255 210 31;
+  --g5: 155 125 255;
+  --g6: 32 201 190;
+  --g7: 176 214 64;
 
-  /* Partition class colors */
-  --g0: 255 176 32;
-  --g1: 64 200 255;
-  --g2: 255 98 170;
-  --g3: 125 232 120;
-  --g4: 172 136 255;
-  --g5: 255 128 88;
-  --g6: 80 230 210;
-  --g7: 236 228 96;
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Inverted surfaces (the black "TRUSTCAST 8.31" card, selected pills): flip the tokens
+   so everything inside reads correctly on the ink-filled background. */
+.display,
+.key[data-on]:not(.key-accent) {
+  --bg: var(--panel);
+  --plate: 38 38 38;
+  --plate-hi: 56 56 56;
+  --line: 70 70 70;
+  --ink: 242 242 242;
+  --muted: 160 160 160;
+  --ext: 90 90 90;
+}
+[data-skin="night"] .display,
+[data-skin="night"] .key[data-on]:not(.key-accent) {
+  --plate: 255 255 255;
+  --plate-hi: 222 222 222;
+  --line: 205 205 205;
+  --ink: 17 17 17;
+  --muted: 100 100 100;
+  --ext: 170 170 170;
 }
 
 @layer base {
   html {
     background: rgb(var(--bg));
-    color-scheme: dark;
   }
   body {
     @apply bg-bg text-ink font-sans antialiased min-h-screen;
-    background-image:
-      radial-gradient(1100px 520px at 50% -260px, rgb(var(--accent) / 0.16), transparent 70%),
-      radial-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px);
-    background-size: auto, 22px 22px;
-    background-attachment: fixed, fixed;
-    transition: background-color 0.3s ease;
+    font-size: 15px;
+    line-height: 1.45;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  h1, h2, h3 {
+    letter-spacing: -0.03em;
   }
   ::selection {
     background: rgb(var(--accent));
     color: rgb(var(--accent-ink));
   }
   :focus-visible {
-    outline: 2px solid rgb(var(--accent));
+    outline: 2px solid rgb(var(--ink));
     outline-offset: 2px;
   }
 }
 
 @layer components {
-  /* Raised surface */
+  /* Card: flat, white on grey (Day) or charcoal on black (Night) */
   .plate {
-    border-radius: 28px;
-    background: linear-gradient(180deg, rgb(var(--plate-hi)) 0%, rgb(var(--plate)) 120px);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.07),
-      inset 0 -1px 0 rgb(0 0 0 / 0.4),
-      0 0 0 1px rgb(var(--line) / 0.7),
-      0 30px 60px -30px rgb(0 0 0 / 0.9);
+    border-radius: 26px;
+    background: rgb(var(--plate));
   }
 
-  /* Recessed surface */
+  /* Inset panel inside a card: the page colour, no bevel */
   .well {
     border-radius: 18px;
-    background: rgb(var(--bg) / 0.85);
-    box-shadow:
-      inset 0 2px 8px rgb(0 0 0 / 0.55),
-      inset 0 0 0 1px rgb(var(--line) / 0.55),
-      0 1px 0 rgb(255 255 255 / 0.04);
+    background: rgb(var(--bg));
   }
 
-  /* LCD-style readout */
+  /* Hero readout: an ink-filled card */
   .display {
-    border-radius: 22px;
-    background:
-      radial-gradient(120% 140% at 100% 0%, rgb(var(--accent) / 0.10), transparent 60%),
-      rgb(var(--bg));
-    box-shadow:
-      inset 0 3px 12px rgb(0 0 0 / 0.7),
-      inset 0 0 0 1px rgb(var(--line) / 0.6),
-      0 1px 0 rgb(255 255 255 / 0.05);
-  }
-  .glow {
-    text-shadow: 0 0 24px rgb(var(--accent) / 0.55);
+    border-radius: 26px;
+    background: rgb(var(--panel));
+    color: rgb(var(--ink));
   }
 
+  /* Giant extruded word, as in the TrustCast page titles */
+  .word3d {
+    font-weight: 900;
+    letter-spacing: -0.045em;
+    line-height: 0.95;
+    color: rgb(var(--ink));
+    text-shadow:
+      1px 1px 0 rgb(var(--ext)), 2px 2px 0 rgb(var(--ext)), 3px 3px 0 rgb(var(--ext)),
+      4px 4px 0 rgb(var(--ext)), 5px 5px 0 rgb(var(--ext)), 6px 7px 0 rgb(var(--ext)),
+      8px 12px 16px rgb(0 0 0 / 0.22);
+  }
+
+  /* Huge red extruded numeral, as in the TrustCast skill score */
+  .extrude {
+    color: rgb(var(--accent));
+    text-shadow:
+      1px 1px 0 rgb(var(--accent-deep)), 2px 2px 0 rgb(var(--accent-deep)), 3px 3px 0 rgb(var(--accent-deep)),
+      4px 4px 0 rgb(var(--accent-deep)), 5px 5px 0 rgb(var(--accent-deep)), 6px 6px 0 rgb(var(--accent-deep)),
+      9px 12px 20px rgb(0 0 0 / 0.3);
+  }
+
+  /* Mono uppercase label */
   .caps {
-    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-muted;
+    @apply font-mono text-[11.5px] font-medium uppercase tracking-[0.1em] text-muted;
   }
 
-  /* Tactile key */
+  /* Pill button: squashes on press and springs back */
   .key {
     position: relative;
     color: rgb(var(--ink));
-    background: linear-gradient(180deg, rgb(var(--plate-hi)) 0%, rgb(var(--plate)) 100%);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.11),
-      0 0 0 1px rgb(var(--line)),
-      0 4px 0 rgb(0 0 0 / 0.6),
-      0 10px 16px -8px rgb(0 0 0 / 0.7);
-    transition: transform 70ms ease-out, box-shadow 70ms ease-out, color 120ms, background 120ms;
+    background: rgb(var(--plate-hi));
+    transition: transform 0.35s var(--spring), background-color 0.2s, color 0.2s, box-shadow 0.2s;
+    -webkit-tap-highlight-color: transparent;
   }
-  .key:hover {
-    background: linear-gradient(180deg, rgb(var(--plate-hi) / 1) 0%, rgb(var(--plate-hi) / 0.85) 100%);
+  .key:hover:not(:disabled) {
+    background: rgb(var(--line));
   }
-  .key:active:not(:disabled),
-  .key[data-on] {
-    transform: translateY(3px);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.05),
-      inset 0 2px 6px rgb(0 0 0 / 0.35),
-      0 0 0 1px rgb(var(--line)),
-      0 1px 0 rgb(0 0 0 / 0.6);
+  .key:active:not(:disabled) {
+    transform: scale(0.93);
+    transition-duration: 0.08s;
   }
-  .key[data-on] {
-    color: rgb(var(--accent));
-    box-shadow:
-      inset 0 2px 6px rgb(0 0 0 / 0.35),
-      0 0 0 2px rgb(var(--accent) / 0.85),
-      0 1px 0 rgb(0 0 0 / 0.6),
-      0 0 24px -4px rgb(var(--accent) / 0.45);
+  .key[data-on]:not(.key-accent),
+  .key[data-on]:not(.key-accent):hover {
+    background: rgb(var(--panel));
+    color: rgb(var(--ink));
   }
   .key:disabled {
     opacity: 0.35;
     cursor: not-allowed;
   }
 
-  .key-accent {
+  .key-accent,
+  .key-accent:hover:not(:disabled) {
     color: rgb(var(--accent-ink));
-    background: linear-gradient(180deg, rgb(var(--accent-hi)) 0%, rgb(var(--accent)) 55%);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.5),
-      inset 0 -2px 0 rgb(0 0 0 / 0.12),
-      0 4px 0 rgb(var(--accent-deep)),
-      0 12px 22px -8px rgb(var(--accent) / 0.6);
-  }
-  .key-accent:hover {
-    background: linear-gradient(180deg, rgb(var(--accent-hi)) 0%, rgb(var(--accent)) 75%);
+    background: rgb(var(--accent));
+    box-shadow: 0 3px 0 rgb(var(--accent-deep));
   }
   .key-accent:active:not(:disabled),
   .key-accent[data-on] {
-    color: rgb(var(--accent-ink));
-    transform: translateY(3px);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.35),
-      inset 0 2px 6px rgb(0 0 0 / 0.15),
-      0 1px 0 rgb(var(--accent-deep)),
-      0 6px 14px -8px rgb(var(--accent) / 0.6);
+    box-shadow: 0 1px 0 rgb(var(--accent-deep));
   }
 
-  /* Small square toggle used in the transition table */
+  /* Small round toggle used in the transition table */
   .toggle {
-    @apply key w-9 h-9 rounded-xl inline-grid place-items-center text-muted;
+    @apply key w-9 h-9 rounded-full inline-grid place-items-center text-muted;
+    background: rgb(var(--plate));
   }
-  .toggle[data-on] {
+  .toggle[data-on],
+  .toggle[data-on]:hover {
     color: rgb(var(--accent-ink));
-    background: linear-gradient(180deg, rgb(var(--accent-hi)) 0%, rgb(var(--accent)) 60%);
-    box-shadow:
-      inset 0 2px 5px rgb(0 0 0 / 0.2),
-      0 1px 0 rgb(var(--accent-deep)),
-      0 0 18px -4px rgb(var(--accent) / 0.7);
+    background: rgb(var(--accent));
   }
 
-  /* Segmented control: the chosen option rises out of the well */
+  /* Segmented control: the chosen option is an ink-filled pill */
   .seg-on {
-    background: linear-gradient(180deg, rgb(var(--plate-hi)) 0%, rgb(var(--plate)) 100%);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.1),
-      0 0 0 1px rgb(var(--line)),
-      0 3px 0 rgb(0 0 0 / 0.5);
+    background: rgb(var(--panel));
+    color: rgb(var(--bg));
+  }
+  [data-skin="night"] .seg-on {
+    color: rgb(17 17 17);
   }
 
   /* Inputs */
   .field {
-    @apply well rounded-2xl px-4 font-mono text-ink placeholder:text-muted/60 outline-none transition;
+    @apply rounded-2xl px-4 font-mono font-semibold text-ink placeholder:text-muted/60 outline-none transition;
+    background: rgb(var(--bg));
   }
   .field:focus {
-    box-shadow:
-      inset 0 2px 8px rgb(0 0 0 / 0.55),
-      0 0 0 2px rgb(var(--accent) / 0.9),
-      0 0 22px -6px rgb(var(--accent) / 0.6);
+    box-shadow: inset 0 0 0 2px rgb(var(--ink));
   }
   .field-select {
     appearance: none;
     cursor: pointer;
     padding-right: 1.75rem;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background: rgb(var(--plate));
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.6rem center;
   }
@@ -242,44 +227,24 @@
     color: rgb(var(--ink));
   }
 
-  /* Status light */
+  /* Status dot */
   .led {
     width: 10px;
     height: 10px;
     border-radius: 9999px;
     background: rgb(var(--led));
-    box-shadow:
-      0 0 0 3px rgb(var(--led) / 0.16),
-      0 0 14px rgb(var(--led) / 0.85),
-      inset 0 -2px 2px rgb(0 0 0 / 0.25);
-  }
-
-  .swatch {
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.55),
-      inset 0 -2px 0 rgb(0 0 0 / 0.2),
-      0 2px 0 rgb(0 0 0 / 0.55);
-    transition: transform 70ms ease-out, box-shadow 70ms ease-out;
-  }
-  .swatch:active,
-  .swatch[data-on] {
-    transform: translateY(2px);
-    box-shadow:
-      inset 0 2px 4px rgb(0 0 0 / 0.3),
-      0 0 0 2px rgb(var(--bg)),
-      0 0 0 4px rgb(var(--ink) / 0.9);
   }
 }
 
 @keyframes rise {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-rise {
-  animation: rise 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: rise 0.45s var(--spring) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-rise { animation: none; }
-  .key, .swatch { transition: none; }
+  .key { transition: none; }
 }

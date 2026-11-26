@@ -148,7 +148,7 @@ export const DFAForm: React.FC<DFAFormProps> = ({ dfa, validation, onChange }) =
             spellCheck={false}
             className="field h-12 w-full text-[15px]"
           />
-          <p className="mt-2 text-xs text-muted font-mono">{dfa.states.length} states</p>
+          <p className="mt-2 caps">{dfa.states.length} states</p>
         </div>
 
         <div>
@@ -164,12 +164,12 @@ export const DFAForm: React.FC<DFAFormProps> = ({ dfa, validation, onChange }) =
             spellCheck={false}
             className="field h-12 w-full text-[15px]"
           />
-          <p className="mt-2 text-xs text-muted font-mono">{dfa.alphabet.length} symbols</p>
+          <p className="mt-2 caps">{dfa.alphabet.length} symbols</p>
         </div>
       </div>
 
       {/* Validation strip */}
-      <div className="well mt-5 px-4 py-3.5 space-y-2" role="status" aria-live="polite">
+      <div className="well rounded-[22px] mt-5 px-4 py-3.5 space-y-2" role="status" aria-live="polite">
         {validation.isValid ? (
           <div className="flex items-center gap-3 text-sm font-semibold">
             <Led tone={hasWarnings ? 'warn' : 'ok'} />
@@ -197,7 +197,7 @@ export const DFAForm: React.FC<DFAFormProps> = ({ dfa, validation, onChange }) =
       <div className="mt-6">
         <div className="flex items-center justify-between mb-3">
           <span className="caps">Transitions <span className="normal-case tracking-normal text-[13px]">δ</span></span>
-          <span className="font-mono text-xs text-muted">{dfa.states.length} × {dfa.alphabet.length}</span>
+          <span className="caps">{dfa.states.length} × {dfa.alphabet.length}</span>
         </div>
 
         <div className="well overflow-x-auto p-2">

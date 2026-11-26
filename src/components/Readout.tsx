@@ -32,29 +32,29 @@ export const Readout: React.FC<ReadoutProps> = ({ result, title, description }) 
           {result ? 'Minimized' : 'Needs fixing'}
         </span>
       </div>
-      <h2 className="mt-2 text-xl sm:text-2xl font-extrabold tracking-[-0.01em] leading-tight">{title}</h2>
-      <p className="mt-1.5 text-sm text-muted leading-relaxed">{description}</p>
+      <h2 className="mt-3 text-[26px] sm:text-[32px] font-black tracking-[-0.045em] leading-[1.02]">{title}</h2>
+      <p className="mt-2 font-mono text-[12px] uppercase tracking-[0.06em] text-muted leading-relaxed">{description}</p>
 
       <div className="display mt-6 p-5 sm:p-6 flex items-end justify-between gap-4">
         <div>
           <div className="caps">States</div>
-          <div className="mt-3 flex items-center gap-3 sm:gap-4 font-mono tabular-nums leading-none">
-            <span className="text-5xl sm:text-6xl font-bold text-muted/80">{before ?? '?'}</span>
+          <div className="mt-3 flex items-center gap-3 sm:gap-4 tabular-nums leading-none">
+            <span className="font-num text-5xl sm:text-6xl font-semibold text-muted">{before ?? '?'}</span>
             <ArrowRight className="w-6 h-6 sm:w-7 sm:h-7 text-muted" strokeWidth={2.5} />
-            <span className="text-7xl sm:text-[88px] font-bold text-accent glow">{after ?? '?'}</span>
+            <span className="font-hero text-[88px] sm:text-[112px] leading-[0.9] extrude">{after ?? '?'}</span>
           </div>
         </div>
         <div className="text-right pb-1">
           <div className="caps">Smaller</div>
-          <div className="mt-2 font-mono text-2xl sm:text-3xl font-bold tabular-nums">{result ? `${saved}%` : '?'}</div>
+          <div className="mt-2 font-num text-4xl sm:text-5xl font-semibold tabular-nums leading-none">{result ? `${saved}%` : '?'}</div>
         </div>
       </div>
 
       <dl className="grid grid-cols-3 gap-3 mt-4">
         {stats.map((s) => (
-          <div key={s.label} className="well px-3 sm:px-4 py-3 min-w-0">
+          <div key={s.label} className="well rounded-[22px] px-3 sm:px-4 py-3.5 min-w-0">
             <dt className="caps tracking-[0.1em] truncate" title={s.label}>{s.label}</dt>
-            <dd className="mt-1 font-mono text-2xl font-bold tabular-nums">{result ? s.value : '?'}</dd>
+            <dd className="mt-1.5 font-num text-[34px] font-semibold tabular-nums leading-none">{result ? s.value : '?'}</dd>
           </div>
         ))}
       </dl>

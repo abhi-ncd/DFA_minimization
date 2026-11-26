@@ -140,7 +140,7 @@ const GraphCard: React.FC<GraphCardProps> = ({ dfa, title, idPrefix, colorOf, un
     const w = Math.max(22, text.length * 7 + 12);
     return (
       <g opacity={faded ? 0.3 : 1}>
-        <rect x={x - w / 2} y={y - 9} width={w} height={18} rx={6} style={{ fill: 'rgb(var(--plate))', stroke: 'rgb(var(--line))' }} />
+        <rect x={x - w / 2} y={y - 9} width={w} height={18} rx={9} style={{ fill: 'rgb(var(--plate))' }} />
         <text x={x} y={y + 4} textAnchor="middle" fontSize={11} fontWeight={700} fontFamily={MONO} style={{ fill: 'rgb(var(--ink))' }}>
           {text}
         </text>
@@ -151,10 +151,10 @@ const GraphCard: React.FC<GraphCardProps> = ({ dfa, title, idPrefix, colorOf, un
   return (
     <div className="well p-3 sm:p-4 rounded-3xl">
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-base font-bold">{title}</h3>
+        <h3 className="text-lg font-black tracking-[-0.03em]">{title}</h3>
         <span
-          className={`font-mono text-xs font-bold px-2 h-6 inline-flex items-center rounded-lg ${
-            highlight ? 'bg-accent/15 text-accent ring-1 ring-inset ring-accent/40' : 'bg-plate-hi text-muted ring-1 ring-inset ring-line'
+          className={`font-mono text-[11px] font-semibold tracking-[0.06em] px-2.5 h-7 inline-flex items-center rounded-full ${
+            highlight ? 'bg-accent text-accent-ink' : 'bg-plate text-muted'
           }`}
         >
           |Q| = {dfa.states.length}
@@ -296,7 +296,7 @@ const GraphCard: React.FC<GraphCardProps> = ({ dfa, title, idPrefix, colorOf, un
               )}
 
               {/* soft contact shadow */}
-              <ellipse cx={x} cy={y + r + 5} rx={r * 0.8} ry={4} fill="#000" opacity={0.4} />
+              <ellipse cx={x} cy={y + r + 5} rx={r * 0.8} ry={4} fill="#000" opacity={0.18} />
 
               {isFinal && (
                 <circle

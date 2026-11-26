@@ -58,13 +58,13 @@ export const StepByStepView: React.FC<StepByStepViewProps> = ({
       {/* Transport */}
       <div className="display p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div className="flex items-center gap-5 min-w-0">
-          <div className="font-mono tabular-nums leading-none shrink-0">
-            <span className="text-5xl sm:text-6xl font-bold text-accent glow">{currentStepIndex + 1}</span>
-            <span className="text-xl sm:text-2xl font-bold text-muted">/{steps.length}</span>
+          <div className="tabular-nums leading-none shrink-0">
+            <span className="font-hero text-6xl sm:text-7xl extrude">{currentStepIndex + 1}</span>
+            <span className="font-num text-2xl sm:text-3xl font-semibold text-muted ml-1">/{steps.length}</span>
           </div>
           <div className="min-w-0">
             <div className="caps">{TYPE_LABEL[step.type] ?? step.type}</div>
-            <div className="mt-1 text-lg sm:text-xl font-bold leading-tight">{title}</div>
+            <div className="mt-1.5 text-xl sm:text-2xl font-black tracking-[-0.035em] leading-tight">{title}</div>
           </div>
         </div>
 
@@ -110,9 +110,9 @@ export const StepByStepView: React.FC<StepByStepViewProps> = ({
             className="flex-1 py-2 group"
           >
             <span
-              className={`block h-2 rounded-full transition-all ${
-                i <= currentStepIndex ? 'bg-accent' : 'bg-line group-hover:bg-muted/50'
-              } ${i === currentStepIndex ? 'shadow-[0_0_14px_rgb(var(--accent)/0.75)]' : ''}`}
+              className={`block h-2.5 rounded-full transition-all ${
+                i < currentStepIndex ? 'bg-ink' : i === currentStepIndex ? 'bg-accent' : 'bg-plate-hi group-hover:bg-line'
+              }`}
             />
           </button>
         ))}
@@ -120,9 +120,9 @@ export const StepByStepView: React.FC<StepByStepViewProps> = ({
 
       <div key={currentStepIndex} className="animate-rise">
         <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
-          <p className="text-[15px] text-ink/80 leading-relaxed max-w-3xl">{step.description}</p>
+          <p className="text-[16px] font-medium text-ink/85 leading-relaxed max-w-3xl">{step.description}</p>
           {step.isStable && (
-            <span className="inline-flex items-center gap-2.5 h-9 px-3.5 rounded-xl bg-ok/10 text-ok ring-1 ring-inset ring-ok/35 text-sm font-semibold">
+            <span className="inline-flex items-center gap-2.5 h-9 px-4 rounded-full bg-ok font-mono text-[11.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'rgb(var(--on-status))' }}>
               <Led tone="ok" />
               Stable, nothing split
             </span>
@@ -162,23 +162,21 @@ export const StepByStepView: React.FC<StepByStepViewProps> = ({
           <div className="mt-6">
             <div className="flex items-center justify-between mb-3">
               <span className="caps">Classes</span>
-              <span className="font-mono text-xs text-muted">{step.partitions.length} blocks</span>
+              <span className="caps">{step.partitions.length} blocks</span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {step.partitions.map((group, idx) => {
                 const c = groupColor(idx);
                 return (
-                  <div
-                    key={idx}
-                    className="well p-4"
-                    style={{
-                      background: `linear-gradient(180deg, rgb(${c} / 0.10), rgb(var(--bg) / 0.85) 70%)`,
-                      boxShadow: `inset 0 2px 8px rgb(0 0 0 / 0.5), inset 0 0 0 1px rgb(${c} / 0.3), inset 0 3px 0 rgb(${c} / 0.8)`,
-                    }}
-                  >
-                    <div className="flex items-baseline justify-between mb-3">
-                      <span className="font-mono text-lg font-bold" style={{ color: `rgb(${c})` }}>P{idx}</span>
-                      <span className="font-mono text-xs text-muted">{group.length}</span>
+                  <div key={idx} className="well rounded-[22px] p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span
+                        className="inline-grid place-items-center h-8 min-w-[2.5rem] px-2.5 rounded-full font-num text-lg font-semibold"
+                        style={{ background: `rgb(${c})`, color: 'rgb(17 17 17)' }}
+                      >
+                        P{idx}
+                      </span>
+                      <span className="caps">{group.length} {group.length === 1 ? 'state' : 'states'}</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {group.map(st => <StateChip key={st} name={st} color={c} />)}
@@ -228,8 +226,8 @@ export const StepByStepView: React.FC<StepByStepViewProps> = ({
                                 <span className="text-muted">{sig.targetStates[sym]}</span>
                                 <ArrowRight className="w-3 h-3 text-muted/70" />
                                 <span
-                                  className="inline-flex items-center h-6 px-2 rounded-md text-xs font-bold"
-                                  style={{ background: `rgb(${c} / 0.15)`, color: `rgb(${c})`, boxShadow: `inset 0 0 0 1px rgb(${c} / 0.4)` }}
+                                  className="inline-flex items-center h-6 px-2.5 rounded-full text-xs font-bold"
+                                  style={{ background: `rgb(${c})`, color: 'rgb(17 17 17)' }}
                                 >
                                   P{sig.targetGroupIndices[sym]}
                                 </span>

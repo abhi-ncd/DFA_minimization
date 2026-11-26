@@ -17,7 +17,7 @@ const loadSkin = (): Skin => {
   } catch {
     /* storage unavailable */
   }
-  return 'ember';
+  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'night' : 'day';
 };
 
 export const App: React.FC = () => {
@@ -90,7 +90,7 @@ export const App: React.FC = () => {
           ) : (
             <section className="plate p-8 sm:p-10 flex flex-col items-center justify-center text-center min-h-[320px]">
               <Led tone="bad" />
-              <h2 className="mt-5 text-2xl font-extrabold tracking-[-0.01em]">Nothing to draw yet</h2>
+              <h2 className="mt-5 text-3xl font-black tracking-[-0.04em]">Nothing to draw yet</h2>
               <p className="mt-2 text-sm text-muted max-w-sm">
                 Fix the problems listed under Define and the graph, refinement steps and simulator come back.
               </p>
@@ -115,8 +115,8 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      <footer className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 py-10 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
-        <span className="font-semibold">DFA Minimizer</span>
+      <footer className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 py-10 flex flex-wrap items-center justify-between gap-3 font-mono text-[11px] uppercase tracking-[0.1em] text-muted">
+        <span className="font-semibold text-ink">DFA Minimizer</span>
         <span>Automata Theory &amp; Formal Languages project</span>
       </footer>
     </div>
